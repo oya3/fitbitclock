@@ -1,5 +1,6 @@
 import clock from "clock";
 import * as document from "document";
+import { preferences } from "user-settings";
 
 // Tick every second
 clock.granularity = "seconds";
@@ -37,7 +38,50 @@ function updateClock() {
   hourHand.groupTransform.rotate.angle = hoursToAngle(hours, mins);
   minHand.groupTransform.rotate.angle = minutesToAngle(mins);
   secHand.groupTransform.rotate.angle = secondsToAngle(secs);
-  clockLabel.text = today.toTimeString().slice(0, -4);;
+  clockLabel.text = date2str(today, 'YYYY/MM/DD(WW) hh:mm:ss', preferences.clockDisplay === "12h")//hours + ':' + mins + ':' + secs; // today.toTimeString().slice(0, -4);;
+}
+
+// Date型から指定文字列に変換
+function date2str (date, format, is12hours) {
+  let week = ['日', '月', '火', '水', '木', '金', '土']
+  if (!format) {
+    format = 'YYYY/MM/DD(WW) hh:mm:ss'
+  }
+  let year = date.getFullYear()
+  let month = (date.getMonth() + 1)
+  let day = date.getDate()
+  let weekday = week[date.getDay()]
+  let hours = date.getHours()
+  let minutes = date.getMinutes()
+  let secounds = date.getSeconds()
+  let ampm = hours < 12 ? 'AM' : 'PM'
+  if (is12hours) {
+    hours = hours % 12
+    hours = (hours !== 0) ? hours : 12 // 0時は12時と表示する
+  }
+  let replaceStrArray =
+      {
+        'YYYY': year,
+        'Y': year,
+        'MM': ('0' + (month)).slice(-2),
+        'M': month,
+        'DD': ('0' + (day)).slice(-2),
+        'D': day,
+        'WW': weekday,
+        'hh': ('0' + hours).slice(-2),
+        'h': hours,
+        'mm': ('0' + minutes).slice(-2),
+        'm': minutes,
+        'ss': ('0' + secounds).slice(-2),
+        's': secounds,
+        'AP': ampm
+      }
+  let replaceStr = '(' + Object.keys(replaceStrArray).join('|') + ')'
+  let regex = new RegExp(replaceStr, 'g')
+  let ret = format.replace(regex, function (str) {
+    return replaceStrArray[str]
+  })
+  return ret
 }
 
 // デフォルトで情報は隠す
