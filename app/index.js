@@ -1,9 +1,25 @@
 import clock from "clock";
 import * as document from "document";
 import { preferences } from "user-settings";
+import { HeartRateSensor } from "heart-rate";
+import { today } from "user-activity";
+import { battery } from "power";
+import { me as appbit } from "appbit";
+import { display } from "display";
 
 // Tick every second
 clock.granularity = "seconds";
+
+let currentSVG = 'main_' // mainになる
+toggleScreen()
+
+let all = document.getElementById("all");
+all.addEventListener("click", (evt) => {
+  toggleScreen()
+});
+
+let hrm_value = 0;
+
 
 let clockLabel = document.getElementById("clock-label");
 let hourHand = document.getElementById("hours");
@@ -30,15 +46,27 @@ function secondsToAngle(seconds) {
 
 // Rotate the hands every tick
 function updateClock() {
-  let today = new Date();
-  let hours = today.getHours() % 12;
-  let mins = today.getMinutes();
-  let secs = today.getSeconds();
+  let now = new Date();
+  let hours = now.getHours() % 12;
+  let mins = now.getMinutes();
+  let secs = now.getSeconds();
 
   hourHand.groupTransform.rotate.angle = hoursToAngle(hours, mins);
   minHand.groupTransform.rotate.angle = minutesToAngle(mins);
   secHand.groupTransform.rotate.angle = secondsToAngle(secs);
-  clockLabel.text = date2str(today, 'YYYY/MM/DD(WW) hh:mm:ss', preferences.clockDisplay === "12h")//hours + ':' + mins + ':' + secs; // today.toTimeString().slice(0, -4);;
+  clockLabel.text = date2str(now, 'YYYY/MM/DD(WW) hh:mm:ss', preferences.clockDisplay === "12h")//hours + ':' + mins + ':' + secs; // today.toTimeString().slice(0, -4);;
+
+  if(currentSVG === 'sub'){
+    let myLabel2 = document.getElementById("myLabel2");
+    let myLabel3 = document.getElementById("myLabel3");
+    let myLabel4 = document.getElementById("myLabel4");
+    let myLabel5 = document.getElementById("myLabel5");
+    
+    myLabel2.text = '心拍：' + hrm_value;
+    myLabel3.text = '電池：' + battery.chargeLevel;
+    myLabel4.text = '歩数：' + today.adjusted.steps;
+    myLabel5.text = '階数：' + today.adjusted.elevationGain;
+  }
 }
 
 // Date型から指定文字列に変換
@@ -93,3 +121,31 @@ function toggle(ele){
   }
 // Update the clock every tick event
 clock.addEventListener("tick", updateClock);
+
+// 画面を切り替える関数
+function toggleScreen() {
+  let main = document.getElementById("main");
+  let sub = document.getElementById("sub");
+  if (currentSVG === 'main') {
+    main.style.display = 'none'
+    sub.style.display = 'inline';
+    currentSVG = 'sub'
+  } else {
+    main.style.display = 'inline';
+    sub.style.display = 'none';
+    currentSVG = 'main'
+  }
+}
+
+if (HeartRateSensor) {
+  const hrm = new HeartRateSensor();
+  hrm.addEventListener("reading", () => {
+    hrm_value = hrm.heartRate;
+    console.log(`Current heart rate: ${hrm.heartRate}`);
+  });
+  display.addEventListener("change", () => {
+    // Automatically stop the sensor when the screen is off to conserve battery
+    display.on ? hrm.start() : hrm.stop();
+  });
+  hrm.start();
+}
